@@ -1,24 +1,38 @@
-# Procedimento experimental — captura Wi-Fi
+# Procedimento experimental — captura de tráfego Wi-Fi
 
-## Objetivo
-Verificar a conformidade do JSON emitido pelo sniffer e obter uma contagem reproduzível dos registros observados.
+Este firmware transmite os quadros selecionados por UART para o ESP32 receptor. O experimento acompanha o log da captura e o resultado do envio serial.
 
-## Execução
-Compile e grave o firmware com o ESP-IDF. Depois, capture o monitor serial:
+## 1. Compilar, gravar e observar
 
-    idf.py -p PORTA monitor
+No terminal ESP-IDF, com o ESP32 sniffer conectado:
 
-Copie a saída para um arquivo texto chamado captura.jsonl. O validador ignora linhas sem JSON e analisa objetos JSON encontrados em cada linha. Também é possível preparar um arquivo com apenas as mensagens JSON emitidas pelo sniffer.
+```powershell
+idf.py build
+idf.py -p COM5 flash monitor
+```
 
-Execute:
+Troque `COM5` pela porta correta. Para cada quadro transformado em JSON, procure:
 
-    py tests\validar_experimento.py --autoteste
-    py tests\validar_experimento.py --arquivo captura.jsonl --saida resultado.json
+```text
+[EXPERIMENTO][UART_ENVIO] bytes=... cliente=... bssid=... payload={...}
+```
 
-O script verifica campos type, subtype, rssi, canal, tamanho, to_ds, from_ds, direcao, cliente, bssid e timestamp. Também verifica formato dos endereços MAC, RSSI entre -127 e 0 dBm, canal entre 1 e 13 e tamanho positivo.
+Se ocorrer problema no envio, procure `[EXPERIMENTO][UART_ENVIO_INCOMPLETO]`. O firmware registra também contadores de quadros capturados, mensagens enviadas à UART e JSONs truncados.
 
-## Protocolo sugerido
-Faça cinco repetições e registre o tempo de captura, o canal/ambiente observado e a quantidade de quadros válidos. Como a captura depende do tráfego de rádio presente, não confunda quadros vistos pelo sniffer com mensagens MQTT persistidas. Documente as condições ambientais da execução.
+## 2. Verificar o receptor
 
-## Limitação
-O autoteste valida somente o script. A captura real exige o ESP32 e tráfego Wi-Fi disponível; a validação JSON não comprova que todos os quadros transmitidos no ambiente foram capturados.
+Abra o monitor serial do segundo ESP32, o receptor do repositório `sniffer-receptor-caso-uso-1`. Procure a linha `[EXPERIMENTO][UART_RECEBIDO]`. O payload deve conter os campos esperados, incluindo `cliente` e `bssid`.
+
+## 3. Conferir o broker e o backend
+
+Capture o tópico MQTT publicado pelo receptor:
+
+```powershell
+mosquitto_sub -h HOST_DO_BROKER -p 1883 -t wifi -v
+```
+
+No backend do Caso de Uso 1, consulte os logs `[EXPERIMENTO][MQTT_RECEBIDO]`, `[EXPERIMENTO][PROCESSAMENTO_OK]` e `[EXPERIMENTO][INFLUX_PERSISTIDO]`. Compare as contagens para o mesmo intervalo. Como o sniffer depende do tráfego de rádio observado e do canal sintonizado, não considere os quadros capturados como equivalentes a todas as transmissões existentes no ambiente.
+
+## Dados a registrar
+
+Para cada repetição, anote a duração, quadros capturados, mensagens enviadas à UART, mensagens recebidas pelo receptor, mensagens observadas no tópico `wifi`, gravações no InfluxDB e erros. Os logs podem conter endereços MAC; mantenha as capturas de acordo com as regras de privacidade e uso da instituição.
