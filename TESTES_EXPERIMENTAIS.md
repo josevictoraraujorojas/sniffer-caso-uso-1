@@ -40,7 +40,7 @@ Para cada repetição, anote a duração, quadros capturados, mensagens enviadas
 
 ## Limite do ensaio e salvamento dos logs
 
-O firmware limita o ensaio a 100 mensagens experimentais no fluxo indicado abaixo. Ao alcançar o limite, registra `[EXPERIMENTO][FIM]` e impede novas mensagens experimentais desse fluxo. No sniffer, a unidade é a mensagem JSON enviada pela UART; no receptor, são as mensagens publicadas no tópico `wifi`. O contador local não prova que todas as mensagens chegaram ao broker ou foram persistidas.
+O firmware sniffer limita o ensaio a 100 mensagens JSON enviadas pela UART. Ao atingir o limite, registra `[EXPERIMENTO][FIM]` e deixa de encaminhar novos quadros. Essa contagem não garante que o receptor publicou 100 mensagens MQTT nem que o backend persistiu todos os registros.
 
 Para gravar a saída serial em um arquivo no computador, abra o PowerShell na pasta do projeto e execute (ajuste a porta serial conforme necessário):
 
