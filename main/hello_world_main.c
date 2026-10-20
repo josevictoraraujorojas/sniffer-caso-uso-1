@@ -205,10 +205,21 @@ static void wifi_sniffer_packet_handler(void *buf, wifi_promiscuous_pkt_type_t t
 
     int64_t inicio_uart = esp_timer_get_time();
 
-    uart_write_bytes(
+    int bytes_enviados = uart_write_bytes(
         UART_PORT,
         json_message,
         json_size);
+
+    if (bytes_enviados == json_size)
+    {
+        ESP_LOGI(TAG, "[EXPERIMENTO][UART_ENVIO] bytes=%d cliente=%s bssid=%s payload=%s",
+                 bytes_enviados, client_mac, bssid_mac, json_message);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "[EXPERIMENTO][UART_ENVIO_INCOMPLETO] esperados=%d enviados=%d",
+                 json_size, bytes_enviados);
+    }
 
     int64_t fim_uart = esp_timer_get_time();
 
