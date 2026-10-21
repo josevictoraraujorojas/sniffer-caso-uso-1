@@ -91,6 +91,9 @@ Crie a pasta de resultados no PowerShell, se necessário: `New-Item -ItemType Di
 ```powershell
 idf.py build
 idf.py -p COM5 flash
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
+chcp 65001
 idf.py -p COM5 monitor 2>&1 | Tee-Object -FilePath "C:\Users\Jose\TCC-Experimentos\01-pzem-serial.log"
 ```
 
