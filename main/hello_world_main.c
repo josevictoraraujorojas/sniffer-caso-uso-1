@@ -44,10 +44,12 @@ static const char *TAG = "SNIFFER";
  * JSON BUFFER
  * ========================================================= */
 #define JSON_MESSAGE_SIZE   512
+#define TOTAL_MENSAGENS_TESTE 100
 
 static uint32_t total_pacotes = 0;
 static uint32_t total_uart = 0;
 static uint32_t json_truncado = 0;
+static bool experimento_finalizado = false;
 
 /* =========================================================
  * IEEE 802.11 HEADER
@@ -104,7 +106,7 @@ static void uart_init_custom(void)
  * ========================================================= */
 static void wifi_sniffer_packet_handler(void *buf, wifi_promiscuous_pkt_type_t type)
 {
-    if (type != WIFI_PKT_DATA)
+    if (experimento_finalizado || type != WIFI_PKT_DATA)
     {
         return;
     }
@@ -205,14 +207,30 @@ static void wifi_sniffer_packet_handler(void *buf, wifi_promiscuous_pkt_type_t t
 
     int64_t inicio_uart = esp_timer_get_time();
 
-    uart_write_bytes(
+    int bytes_enviados = uart_write_bytes(
         UART_PORT,
         json_message,
         json_size);
 
-    int64_t fim_uart = esp_timer_get_time();
+    if (bytes_enviados == json_size)
+    {
+        total_uart++;
+        ESP_LOGI(TAG, "[EXPERIMENTO][UART_ENVIO] mensagem=%lu/%d bytes=%d cliente=%s bssid=%s payload=%s",
+                 (unsigned long)total_uart, TOTAL_MENSAGENS_TESTE,
+                 bytes_enviados, client_mac, bssid_mac, json_message);
+        if (total_uart >= TOTAL_MENSAGENS_TESTE)
+        {
+            experimento_finalizado = true;
+            ESP_LOGI(TAG, "[EXPERIMENTO][FIM] total_mensagens_uart=%lu", (unsigned long)total_uart);
+        }
+    }
+    else
+    {
+        ESP_LOGE(TAG, "[EXPERIMENTO][UART_ENVIO_INCOMPLETO] esperados=%d enviados=%d",
+                 json_size, bytes_enviados);
+    }
 
-    total_uart++;
+    int64_t fim_uart = esp_timer_get_time();
 
     int64_t fim_total = esp_timer_get_time();
 

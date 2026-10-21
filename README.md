@@ -70,3 +70,44 @@ Este repositório é a etapa de captura. O firmware receptor correspondente est�
 - A captura depende do canal sintonizado e do alcance do sinal de rádio.
 - O modo promíscuo pode observar quadros de diferentes dispositivos próximos; use os dados respeitando a legislação, a privacidade e as regras da instituição.
 - A UART em alta velocidade exige conexões curtas e configuração serial igual nos dois ESP32.
+
+## Testes experimentais do TCC
+
+### Objetivo e fluxo avaliado
+
+Verificar se o ESP32 opera em modo promíscuo, transforma quadros Wi-Fi observados em mensagens JSON e as encaminha ao ESP32 receptor por UART2. Este firmware não publica diretamente no MQTT nem garante que cada quadro capturado resulte em uma mensagem persistida.
+
+### Preparação
+
+1. Conecte o ESP32 sniffer ao ESP32 receptor: TX ao RX, RX ao TX quando necessário pela configuração, e GND comum. Confira os GPIOs e a velocidade UART documentados nos dois projetos.
+2. Identifique a porta serial do sniffer e a do receptor.
+3. Configure e grave o firmware receptor do repositório [sniffer-receptor-caso-uso-1](https://github.com/josevictoraraujorojas/sniffer-receptor-caso-uso-1).
+4. Inicie broker MQTT, serviços de banco e backend do [Caso de Uso 1](https://github.com/josevictoraraujorojas/caso-de-uso-1).
+
+### Execução e coleta dos logs
+
+Crie a pasta de resultados no PowerShell, se necessário: `New-Item -ItemType Directory -Force -Path "$HOME\TCC-Experimentos"`. No terminal ESP-IDF, na raiz do projeto:
+
+```powershell
+idf.py build
+idf.py -p COM5 flash
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
+chcp 65001
+idf.py -p COM5 monitor 2>&1 | Tee-Object -FilePath "C:\Users\Jose\TCC-Experimentos\01-sniffer.log"
+```
+
+Troque `COM5` pela porta do sniffer. Encerre o monitor com `Ctrl+]` e finalize a transcrição com `Stop-Transcript`, quando o PowerShell retornar ao prompt. O firmware experimental interrompe o encaminhamento após até 100 mensagens JSON enviadas pela UART. Use um novo nome de arquivo em cada repetição.
+
+### Como o teste foi instrumentado
+
+Os marcadores `[EXPERIMENTO][UART_ENVIO]`, `[EXPERIMENTO][CONTAGEM]` e `[EXPERIMENTO][FIM]` ajudam a identificar mensagens encaminhadas e o término da coleta, conforme os pontos de instrumentação presentes no firmware. Registre também o log serial do receptor: o envio pela UART não prova, isoladamente, que o receptor recompôs e publicou o JSON.
+
+### Verificação e interpretação
+
+- Conte os registros de envio UART no log do sniffer.
+- Compare com os registros `[EXPERIMENTO][UART_RECEBIDO]` do receptor e com as publicações no tópico MQTT `wifi`.
+- Verifique no backend os marcadores de recebimento e processamento e consulte a medição `trafego_wifi` no bucket `caso_uso_1`.
+- Registre separadamente quadros observados, mensagens JSON enviadas por UART, mensagens recebidas pelo receptor, publicações MQTT, mensagens recebidas pelo backend e registros consultados no InfluxDB.
+
+Essas quantidades podem ser diferentes: quadros capturados não correspondem necessariamente um a um às mensagens encaminhadas ou persistidas. A captura depende dos canais, do alcance do sinal e do tráfego presente no local.
